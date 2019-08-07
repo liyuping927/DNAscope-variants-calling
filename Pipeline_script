@@ -35,27 +35,32 @@ sentieon driver -r ReferenceGenome -i REALIGNED_BAM -q RECAL_DATA.TABLE --algo Q
 
 #7.3 SNP and small indel variants calling
 sentieon driver -r ReferenceGenome -i REALIGNED_BAM -q RECAL_DATA.TABLE --algo DNAscope --ploidy [1|2] VARIANT_VCF 
-# SNP and small Indel variant calling
+# SNP and small Indel variant calling; change ploidy accordingly: 1 for haploids, 2 for diploids
 
 
 #7.4 Structural variants calling
 sentieon driver -r ReferenceGenome -i REALIGNED_BAM -q RECAL_DATA.TABLE --algo DNAscope --var_type bnd --ploidy [1|2] TMP_VARIANT_VCF 
-# detect the break-end variant type (BND)
+# detect the break-end variant type (BND); change ploidy accordingly: 1 for haploids, 2 for diploids
 
 sentieon driver -r ReferenceGenome --algo SVSolver -v TMP_VARIANT_VCF STRUCTURAL_VARIANT_VCF 
 # SVSolver algorithm processed BND and output structural variants to a VCF file
 
+
 #7.5 Copy number variants calling
 sentieon driver -r ReferenceGenome -i REALIGNED_BAM -q RECAL_DATA_TABLE --algo QualCal RECAL_DATA_TABLE_POST --algo ReadWriter RECALIBRATED_BAM 
 # create recalibrated BAM files
+
 sentieon driver -r ReferenceGenome -i RECALED_BAM_1 [-i RECALED_BAM_n] --algo CNV --target BED_FILE --create_pon OUT_PON 
 #Create Panel Of Normal (PON)
+
 sentieon driver -r ReferenceGenome -i RECALED_BAM --algo CNV --target BED_FILE --pon PON_FILE OUT_CNV 
 #call CNV
+
 
 #7.6 Variant annotation (same commands apply to the vcf file from structural variants calling)
 java -Xmx2g -jar snpEff -c snpEff_config -v R64-1-1.75 -class VARIANT_VCF > Ann.vcf -s snpEff_summary.html 
 #Use snpEff to annotate a vcf file
+
 java -jar SnpSift extractFields Ann.vcf CHROM POS ID REF ALT QUAL FILTER EFF[0].EFFECT EFF[0].GENE: EFF[0].IMPACT: EFF[0].FUNCLASS: EFF[0].CODON: EFF[0].AA ANN[0].BIOTYPE: GEN[0].GT GEN[0].AD GEN[0].DP GEN[0].GQ GEN[0].PL > Final_Ann.vcf 
 #For variants in coding regions, SNPSift was used to extract the first annotation of each variant, which is the annotation with the largest effect
 
