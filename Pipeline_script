@@ -1,3 +1,12 @@
+#To run this python script, following modules are required:
+#R/3.3.0
+#python/2.7
+#sentieon
+#cutadapt
+#gatk
+#java/8u66
+
+
 #7.2 Fastq processing
 cutadapt --minimum-length 12 -q 30 -u 10 -a CTGTCTCTTATACACATCTCCGAGCCCACGAGAC -o tmp.1.fastq.gz -p tmp.2.fastq.gz fastqR1 fastqR2 
 # First trim the forward read, writing output to temporary files
