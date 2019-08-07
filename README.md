@@ -3,10 +3,16 @@ This file describes the pipeline (python) used to call DNA variants from genome-
 
 Please modify file names when apply this pipeline.
 
-Following modules are required to run this script.
+Following modules are required to run this script:
+
 R/3.3.0
+
 python/2.7
+
 sentieon
+
 cutadapt
+
 gatk
+
 java/8u66
