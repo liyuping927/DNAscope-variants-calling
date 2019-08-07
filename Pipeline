@@ -1,0 +1,52 @@
+#7.2 Fastq processing
+cutadapt --minimum-length 12 -q 30 -u 10 -a CTGTCTCTTATACACATCTCCGAGCCCACGAGAC -o tmp.1.fastq.gz -p tmp.2.fastq.gz fastqR1 fastqR2 
+# First trim the forward read, writing output to temporary files
+
+cutadapt --minimum-length 12 -q 30 -u 10 -a CTGTCTCTTATACACATCTGACGCTGCCGACGA -o trimmedR2.fastq.gz -p trimmedR1.fastq.gz tmp.2.fastq.gz tmp.1.fastq.gz 
+# Then trim the reverse read, using the temporary files as input
+
+(bwa mem -M -R readGroupInfo -K 10000000 ReferenceGenome trimmedR1.fastq.gz trimmedR2.fastq.gz) | sentieon util sort -o SORTED_BAM --sam2bam -i – 
+#Reads are mapped and sorted 
+
+sentieon driver -i SORTED_BAM --algo LocusCollector --fun score_info SCORE_TXT 
+# collect read information
+
+sentieon driver -i SORTED_BAM --algo Dedup -- rmdup --score_info SCORE_TXT --metrics DEDUP_METRIC_TXT DEDUP_BAM 
+#remove duplicates
+
+sentieon driver -r ReferenceGenome -i DEDUP_BAM -- algo Realigner REALIGNED_BAM 
+# Local realignment around indels was performed using the deduped BAM file.
+
+sentieon driver -r ReferenceGenome -i REALIGNED_BAM --algo QualCal RECAL_DATA.TABLE 
+#calculate the required modification of the quality scores assigned to individual read bases of the sequence read data
+
+sentieon driver -r ReferenceGenome -i REALIGNED_BAM -q RECAL_DATA.TABLE --algo QualCal RECAL_DATA.TABLE.POST 
+# apply the recalibration to calculate the post calibration data table
+
+
+#7.3 SNP and small indel variants calling
+sentieon driver -r ReferenceGenome -i REALIGNED_BAM -q RECAL_DATA.TABLE --algo DNAscope --ploidy [1|2] VARIANT_VCF 
+# SNP and small Indel variant calling
+
+
+#7.4 Structural variants calling
+sentieon driver -r ReferenceGenome -i REALIGNED_BAM -q RECAL_DATA.TABLE --algo DNAscope --var_type bnd --ploidy [1|2] TMP_VARIANT_VCF 
+# detect the break-end variant type (BND)
+
+sentieon driver -r ReferenceGenome --algo SVSolver -v TMP_VARIANT_VCF STRUCTURAL_VARIANT_VCF 
+# SVSolver algorithm processed BND and output structural variants to a VCF file
+
+#7.5 Copy number variants calling
+sentieon driver -r ReferenceGenome -i REALIGNED_BAM -q RECAL_DATA_TABLE --algo QualCal RECAL_DATA_TABLE_POST --algo ReadWriter RECALIBRATED_BAM 
+# create recalibrated BAM files
+sentieon driver -r ReferenceGenome -i RECALED_BAM_1 [-i RECALED_BAM_n] --algo CNV --target BED_FILE --create_pon OUT_PON 
+#Create Panel Of Normal (PON)
+sentieon driver -r ReferenceGenome -i RECALED_BAM --algo CNV --target BED_FILE --pon PON_FILE OUT_CNV 
+#call CNV
+
+#7.6 Variant annotation (same commands apply to the vcf file from structural variants calling)
+java -Xmx2g -jar snpEff -c snpEff_config -v R64-1-1.75 -class VARIANT_VCF > Ann.vcf -s snpEff_summary.html 
+#Use snpEff to annotate a vcf file
+java -jar SnpSift extractFields Ann.vcf CHROM POS ID REF ALT QUAL FILTER EFF[0].EFFECT EFF[0].GENE: EFF[0].IMPACT: EFF[0].FUNCLASS: EFF[0].CODON: EFF[0].AA ANN[0].BIOTYPE: GEN[0].GT GEN[0].AD GEN[0].DP GEN[0].GQ GEN[0].PL > Final_Ann.vcf 
+#For variants in coding regions, SNPSift was used to extract the first annotation of each variant, which is the annotation with the largest effect
+
